@@ -22,7 +22,7 @@ public class Test {
 		// Server Details
 		ArrayList<ServerAddress> addrs = new ArrayList<ServerAddress>();
 		try {
-			addrs.add(new ServerAddress("192.168.122.194", 27017));
+			addrs.add(new ServerAddress("192.168.122.159", 27017));
 		} catch (UnknownHostException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -39,6 +39,7 @@ public class Test {
 		
 		//executeInsertReferenced(referenced);
 		executeInsertEmbedded(embedded);
+		//select();
 	}
 
 	public static String randomText(Integer bits) {
@@ -316,13 +317,13 @@ public class Test {
 		try {
 
 			ArrayList<ServerAddress> addrs = new ArrayList<ServerAddress>();
-			addrs.add(new ServerAddress("192.168.122.194", 27017));
+			addrs.add(new ServerAddress("192.168.122.159", 27017));
 
 			// To connect to mongodb server
 			MongoClient mongoClient = new MongoClient(addrs);
 
 			// Now connect to your databases
-			DB db = mongoClient.getDB("referenced");
+			DB db = mongoClient.getDB("blog_db");
 			System.out.println("Connect to database successfully");
 
 			// Get Collection
