@@ -1,5 +1,6 @@
 package test;
 
+import java.awt.List;
 import java.math.BigInteger;
 import java.net.UnknownHostException;
 import java.security.SecureRandom;
@@ -18,11 +19,46 @@ import com.mongodb.WriteConcern;
 
 public class Test {
 
+	public static int numberOfUsers = 1000;
+	public static int numberOfBlogs = 1000;
+	public static int numberOfComments = 1000;
+	public static int numberOfLikes = 1000;
+
 	public static void main(String args[]) {
+
+		// Connection Details
+		MongoClient mongoClient = connectToDB("192.168.122.194");
+
+		// Now connect to your databases
+		DB embedded = mongoClient.getDB("embedded");
+		DB referenced = mongoClient.getDB("referenced");
+
+//		 long startTime = System.nanoTime();
+//		 ArrayList<HashMap<String, String>> result =
+//		 selectBlogWithAssociatesEmbedded(embedded);
+//		 long estimatedTime = System.nanoTime() - startTime;
+//		 double seconds = (double) estimatedTime / 1000000000.0;
+//		 System.out.println(result);
+//		 System.out.println("Duration: " + seconds);
+
+		long startTime = System.nanoTime();
+		ArrayList<HashMap<String, String>> result = selectBlogWithAssociatesReferenced(referenced);
+		long estimatedTime = System.nanoTime() - startTime;
+		double seconds = (double) estimatedTime / 1000000000.0;
+		System.out.println(result);
+		System.out.println("Duration: " + seconds);
+
+//		 executeInsertReferenced(referenced);
+//		 executeInsertEmbedded(embedded);
+
+	}
+
+	public static MongoClient connectToDB(String ip) {
+
 		// Server Details
 		ArrayList<ServerAddress> addrs = new ArrayList<ServerAddress>();
 		try {
-			addrs.add(new ServerAddress("192.168.122.159", 27017));
+			addrs.add(new ServerAddress(ip, 27017));
 		} catch (UnknownHostException e) {
 			// TODO Auto-generated catch block
 			e.printStackTrace();
@@ -32,14 +68,8 @@ public class Test {
 		MongoClient mongoClient = new MongoClient(addrs);
 		// Set Write Concern
 		mongoClient.setWriteConcern(WriteConcern.UNACKNOWLEDGED);
-		
-		// Now connect to your databases
-		DB embedded = mongoClient.getDB("embedded");
-		DB referenced = mongoClient.getDB("referenced");
-		
-		//executeInsertReferenced(referenced);
-		executeInsertEmbedded(embedded);
-		//select();
+
+		return mongoClient;
 	}
 
 	public static String randomText(Integer bits) {
@@ -62,16 +92,10 @@ public class Test {
 
 			// Helper Variable
 			int count;
-			int numberOfUsers = 1000;
-			int numberOfBlogs = 1000;
-			int numberOfComments = 1000;
-			int numberOfLikes = 1000;
 
 			// Get Collection
 			DBCollection blogCollection = db.getCollection("Blog");
 			DBCollection userCollection = db.getCollection("User");
-			DBCollection commentCollection = db.getCollection("Comment");
-			DBCollection likesCollection = db.getCollection("Likes");
 
 			// Insert User
 			for (count = 0; count < numberOfUsers; count++) {
@@ -84,63 +108,53 @@ public class Test {
 				userCollection.insert(new BasicDBObject(user));
 			}
 
-			// Insert Blog
-			for (count = 0; count < numberOfBlogs; count++) {
-				Map<String, Object> blog = new HashMap<String, Object>();
+			// Insert Comment
+			int b;
+			int c;
+			int l;
+			for (b = 1; b <= numberOfBlogs; b++) {
+
 				Map<String, String> user = new HashMap<String, String>();
-				blog.put("id", count + 1);
-				blog.put("blogpost", randomText(5000));
-				// get User Object
 				user = selectUserById(db, randomNumber(1, numberOfUsers));
+
+				BasicDBObject blog = new BasicDBObject();
+				blog.put("id", b);
+				blog.put("blogpost", randomText(5000));
 				blog.put("user_id", user.get("id"));
 				blog.put("vorname", user.get("vorname"));
 				blog.put("nachname", user.get("nachname"));
 				blog.put("email", user.get("email"));
-				blogCollection.insert(new BasicDBObject(blog));
-			}
 
-			// Insert Comment
-			for (count = 0; count < numberOfComments; count++) {
-				Map<String, Object> comment = new HashMap<String, Object>();
-				Map<String, String> blog = new HashMap<String, String>();
-				Map<String, String> user = new HashMap<String, String>();
-				comment.put("id", count + 1);
-				comment.put("text", randomText(2000));
-				// get Blog Object
-				blog = selectBlogById(db, randomNumber(1, numberOfBlogs));
-				comment.put("blog_id", blog.get("id"));
-				comment.put("blogpost", blog.get("blogpost"));
-				// get User Object
-				user = selectUserById(db, randomNumber(1, numberOfUsers));
-				comment.put("user_id", user.get("id"));
-				comment.put("vorname", user.get("vorname"));
-				comment.put("nachname", user.get("nachname"));
-				comment.put("email", user.get("email"));
-				commentCollection.insert(new BasicDBObject(comment));
-			}
+				for (c = 1; c <= 3; c++) {
 
-			// Insert Likes
-			for (count = 0; count < numberOfLikes; count++) {
-				Map<String, Object> likes = new HashMap<String, Object>();
-				Map<String, String> blog = new HashMap<String, String>();
-				Map<String, String> comment = new HashMap<String, String>();
-				Map<String, String> user = new HashMap<String, String>();
-				likes.put("id", count + 1);
-				// get User Object
-				user = selectUserById(db, randomNumber(1, numberOfUsers));
-				likes.put("user_id", user.get("id"));
-				likes.put("vorname", user.get("vorname"));
-				likes.put("nachname", user.get("nachname"));
-				likes.put("email", user.get("email"));
-				// get Comment Object
-				comment = selectCommentById(db, randomNumber(1, numberOfComments));
-				likes.put("comment_id", comment.get("id"));
-				likes.put("text", comment.get("text"));
-				// get Blog Object
-				blog = selectBlogById(db, randomNumber(1, numberOfBlogs));
-				likes.put("blog_id", blog.get("id"));
-				likes.put("blogpost", blog.get("blogpost"));
-				likesCollection.insert(new BasicDBObject(likes));
+					BasicDBObject comment = new BasicDBObject();
+					user = selectUserById(db, randomNumber(1, numberOfUsers));
+					comment.put("id", c);
+					comment.put("comment", randomText(2000));
+					comment.put("user_id", user.get("id"));
+					comment.put("vorname", user.get("vorname"));
+					comment.put("nachname", user.get("nachname"));
+					comment.put("email", user.get("email"));
+
+					ArrayList<BasicDBObject> myList = new ArrayList<BasicDBObject>();
+					for (l = 1; l <= 3; l++) {
+
+						BasicDBObject like = new BasicDBObject();
+						user = selectUserById(db,
+								randomNumber(1, numberOfUsers));
+						like.put("user_id", user.get("id"));
+						like.put("vorname", user.get("vorname"));
+						like.put("nachname", user.get("nachname"));
+						like.put("email", user.get("email"));
+						myList.add(like);
+					}
+					comment.put("Likes", myList);
+
+					BasicDBObject update = new BasicDBObject();
+					update.put("$push", new BasicDBObject("Comment", comment));
+					blogCollection.update(blog, update, true, true);
+				}
+
 			}
 
 		} catch (Exception e) {
@@ -209,7 +223,7 @@ public class Test {
 	}
 
 	public static Map<String, String> selectUserById(DB db, int id) {
-		
+
 		Map<String, String> resultSet = null;
 
 		try {
@@ -222,18 +236,18 @@ public class Test {
 			try {
 				while (userCursor.hasNext()) {
 					BasicDBObject user = (BasicDBObject) userCursor.next();
-					
+
 					// Parse Result Set
 					resultSet = new HashMap<String, String>();
-					resultSet.put("id", user.getString("id") );
-					resultSet.put("vorname", user.getString("vorname") );
-					resultSet.put("nachname", user.getString("nachname") );
-					resultSet.put("email", user.getString("email") );
+					resultSet.put("id", user.getString("id"));
+					resultSet.put("vorname", user.getString("vorname"));
+					resultSet.put("nachname", user.getString("nachname"));
+					resultSet.put("email", user.getString("email"));
 				}
 			} finally {
 				userCursor.close();
 			}
-			
+
 		} catch (Exception e) {
 			System.err.println(e.getClass().getName() + ": " + e.getMessage());
 		}
@@ -242,7 +256,7 @@ public class Test {
 	}
 
 	public static Map<String, String> selectBlogById(DB db, int id) {
-		
+
 		Map<String, String> resultSet = null;
 
 		try {
@@ -255,20 +269,20 @@ public class Test {
 			try {
 				while (blogCursor.hasNext()) {
 					BasicDBObject blog = (BasicDBObject) blogCursor.next();
-					
+
 					// Parse Result Set
 					resultSet = new HashMap<String, String>();
-					resultSet.put("id", blog.getString("id") );
-					resultSet.put("blogpost", blog.getString("blogpost") );
-					resultSet.put("user_id", blog.getString("user_id") );
-					resultSet.put("vorname", blog.getString("vorname") );
-					resultSet.put("nachname", blog.getString("nachname") );
-					resultSet.put("email", blog.getString("email") );
+					resultSet.put("id", blog.getString("id"));
+					resultSet.put("blogpost", blog.getString("blogpost"));
+					resultSet.put("user_id", blog.getString("user_id"));
+					resultSet.put("vorname", blog.getString("vorname"));
+					resultSet.put("nachname", blog.getString("nachname"));
+					resultSet.put("email", blog.getString("email"));
 				}
 			} finally {
 				blogCursor.close();
 			}
-			
+
 		} catch (Exception e) {
 			System.err.println(e.getClass().getName() + ": " + e.getMessage());
 		}
@@ -277,7 +291,7 @@ public class Test {
 	}
 
 	public static Map<String, String> selectCommentById(DB db, int id) {
-		
+
 		Map<String, String> resultSet = null;
 
 		try {
@@ -290,112 +304,171 @@ public class Test {
 			try {
 				while (blogCursor.hasNext()) {
 					BasicDBObject blog = (BasicDBObject) blogCursor.next();
-					
+
 					// Parse Result Set
 					resultSet = new HashMap<String, String>();
-					resultSet.put("id", blog.getString("id") );
-					resultSet.put("text", blog.getString("text") );
-					resultSet.put("user_id", blog.getString("user_id") );
-					resultSet.put("vorname", blog.getString("vorname") );
-					resultSet.put("nachname", blog.getString("nachname") );
-					resultSet.put("email", blog.getString("email") );
-					resultSet.put("blog_id", blog.getString("blog_id") );
-					resultSet.put("blogpost", blog.getString("blogpost") );
+					resultSet.put("id", blog.getString("id"));
+					resultSet.put("text", blog.getString("text"));
+					resultSet.put("user_id", blog.getString("user_id"));
+					resultSet.put("vorname", blog.getString("vorname"));
+					resultSet.put("nachname", blog.getString("nachname"));
+					resultSet.put("email", blog.getString("email"));
+					resultSet.put("blog_id", blog.getString("blog_id"));
+					resultSet.put("blogpost", blog.getString("blogpost"));
 				}
 			} finally {
 				blogCursor.close();
 			}
-			
+
 		} catch (Exception e) {
 			System.err.println(e.getClass().getName() + ": " + e.getMessage());
 		}
 
 		return resultSet;
 	}
-	
-	public static void select() {
+
+	public static ArrayList<HashMap<String, String>> selectBlogWithAssociatesEmbedded(
+			DB db) {
+
+		ArrayList<HashMap<String, String>> result = new ArrayList<HashMap<String, String>>();
+
 		try {
-
-			ArrayList<ServerAddress> addrs = new ArrayList<ServerAddress>();
-			addrs.add(new ServerAddress("192.168.122.159", 27017));
-
-			// To connect to mongodb server
-			MongoClient mongoClient = new MongoClient(addrs);
-
-			// Now connect to your databases
-			DB db = mongoClient.getDB("blog_db");
-			System.out.println("Connect to database successfully");
-
 			// Get Collection
 			DBCollection blogCollection = db.getCollection("Blog");
-			DBCollection userCollection = db.getCollection("User");
 
-			DBCursor blogCursor = blogCollection.find();
-			try {
-				while (blogCursor.hasNext()) {
-					BasicDBObject blog = (BasicDBObject) blogCursor.next();
-					System.out.println(blog);
+			// Make Query
+			int i;
+			for (i = 1; i <= numberOfBlogs; i++) {
 
-					int user_id = ((Number) blog.get("user_id")).intValue();
-					BasicDBObject userQuery = new BasicDBObject("user_id",
-							user_id);
-					DBCursor userCursor = userCollection.find(userQuery);
+				BasicDBObject blogQuery = new BasicDBObject("id", i);
+				DBCursor blogCursor = blogCollection.find(blogQuery);
+				try {
 
-					try {
-						while (userCursor.hasNext()) {
-							BasicDBObject user = (BasicDBObject) userCursor
-									.next();
-							System.out.println("    " + user);
-						}
-					} finally {
-						userCursor.close();
+					// Loop through Result and build Result Set
+					HashMap<String, String> resultSet = new HashMap<String, String>();
+					while (blogCursor.hasNext()) {
+						BasicDBObject blog = (BasicDBObject) blogCursor.next();
+						resultSet.put("id", blog.getString("id"));
 					}
 
+					result.add(resultSet);
+
+				} finally {
+					blogCursor.close();
 				}
-			} finally {
-				blogCursor.close();
 			}
+		} catch (Exception e) {
+			System.err.println(e.getClass().getName() + ": " + e.getMessage());
+		}
 
-			// Setting Write Concern
-			mongoClient.setWriteConcern(WriteConcern.ACKNOWLEDGED);
+		return result;
+	}
 
-			// // Create JSON Object
-			// BasicDBObject doc = new BasicDBObject("name", "MongoDB")
-			// .append("type", "database")
-			// .append("count", 1)
-			// .append("info",
-			// new BasicDBObject("x", 203).append("y", 102));
-			//
-			// // Insert JSON OBject to DB
-			// coll.insert(doc);
+	public static ArrayList<HashMap<String, String>> selectBlogWithAssociatesReferenced(
+			DB db) {
 
-			// long startTime = System.nanoTime();
-			// // Insert multiple simple JSON OBjects
-			// for (int i = 0; i < 10000; i++) {
-			// coll.insert(new BasicDBObject("i", i));
-			// }
-			// long estimatedTime = System.nanoTime() - startTime;
-			// double seconds = (double) estimatedTime / 1000000000.0;
-			// System.out.println(seconds);
+		ArrayList<HashMap<String, String>> result = new ArrayList<HashMap<String, String>>();
 
-			// Count Objects and print count
-			// System.out.println(coll.getCount());
+		try {
+			// Get Collection
+			DBCollection blogCollection = db.getCollection("Blog");
+			DBCollection commentCollection = db.getCollection("Comment");
+			DBCollection userCollection = db.getCollection("User");
+			DBCollection likesCollection = db.getCollection("Likes");
 
-			// Get All the Documents (with a DB Cursor)
-			// DBCursor cursor = coll.find();
-			// try {
-			// while(cursor.hasNext()) {
-			// System.out.println(cursor.next());
-			// }
-			// } finally {
-			// cursor.close();
-			// }
+			// Make Query
+			int i;
+			for (i = 1; i <= numberOfBlogs; i++) {
 
-			// // Drop Collection
-			// coll.drop();
+				// Get Blog
+				BasicDBObject blogQuery = new BasicDBObject("id", i);
+				DBCursor blogCursor = blogCollection.find(blogQuery);
+				try {
+
+					// Loop through Result and build Result Set
+					HashMap<String, String> resultSet = new HashMap<String, String>();
+					while (blogCursor.hasNext()) {
+						BasicDBObject blog = (BasicDBObject) blogCursor.next();
+						// System.out.println(" Blog " + blog);
+
+						// Get Author from Blog
+						BasicDBObject userBlogQery = new BasicDBObject("id",
+								blog.getInt("user_id"));
+						DBCursor userBlogCursor = userCollection
+								.find(userBlogQery);
+
+						while (userBlogCursor.hasNext()) {
+							BasicDBObject userBlog = (BasicDBObject) userBlogCursor
+									.next();
+							// System.out.println(" BlogUser    " + userBlog);
+						}
+
+						// Get Comments
+						BasicDBObject commentQuery = new BasicDBObject(
+								"blog_id", i);
+						DBCursor commentCursor = commentCollection
+								.find(commentQuery);
+
+						while (commentCursor.hasNext()) {
+							BasicDBObject comment = (BasicDBObject) commentCursor
+									.next();
+							// System.out.println("    Comment   " + comment);
+
+							// Get Author from Comment
+							BasicDBObject userCommentQery = new BasicDBObject(
+									"id", comment.getInt("user_id"));
+							DBCursor userCommentCursor = userCollection
+									.find(userCommentQery);
+
+							while (userCommentCursor.hasNext()) {
+								BasicDBObject user = (BasicDBObject) userCommentCursor
+										.next();
+								// System.out.println("   CommentUser    " +
+								// user);
+							}
+
+							// Get Likes from Comment
+							BasicDBObject likesQery = new BasicDBObject(
+									"comment_id", comment.getInt("id"));
+							DBCursor likesCursor = likesCollection
+									.find(likesQery);
+
+							while (likesCursor.hasNext()) {
+								BasicDBObject like = (BasicDBObject) likesCursor
+										.next();
+								// System.out.println("         LIKE    " +
+								// like);
+
+								// Get Author from Like
+								BasicDBObject userLikeQuery = new BasicDBObject(
+										"id", like.getInt("user_id"));
+								DBCursor userLikeCursor = userCollection
+										.find(userLikeQuery);
+
+								while (userLikeCursor.hasNext()) {
+									BasicDBObject user = (BasicDBObject) userLikeCursor
+											.next();
+									// System.out.println("        LikeUser    "
+									// + user);
+								}
+							}
+
+						}
+						resultSet.put("id", blog.getString("id"));
+
+					}
+
+					result.add(resultSet);
+
+				} finally {
+					blogCursor.close();
+				}
+			}
 
 		} catch (Exception e) {
 			System.err.println(e.getClass().getName() + ": " + e.getMessage());
 		}
+
+		return result;
 	}
 }
