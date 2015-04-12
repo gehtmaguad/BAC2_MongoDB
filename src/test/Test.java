@@ -6,9 +6,9 @@ import java.security.SecureRandom;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Random;
-import java.util.List;
 
 import com.mongodb.AggregationOutput;
 import com.mongodb.BasicDBObject;
@@ -19,13 +19,14 @@ import com.mongodb.DBObject;
 import com.mongodb.MongoClient;
 import com.mongodb.ServerAddress;
 import com.mongodb.WriteConcern;
+import com.mongodb.WriteResult;
 
 public class Test {
 
-	public static int numberOfUsers = 100000;
-	public static int numberOfBlogs = 100000;
-	public static int numberOfComments = 100000;
-	public static int numberOfLikes = 100000;
+	public static int numberOfUsers = 1000;
+	public static int numberOfBlogs = 1000;
+	public static int numberOfComments = 1000;
+	public static int numberOfLikes = 1000;
 
 	public static void main(String args[]) {
 
@@ -35,6 +36,8 @@ public class Test {
 		DB referenced = mongoClient.getDB("referenced");
 
 		// executeInsertReferenced(referenced);
+		
+		System.out.println(moveItemBetweenUserEmbedded(embedded));
 
 		// // Tag Top Blogger
 		// long startTime = System.nanoTime();
@@ -62,7 +65,7 @@ public class Test {
 		// System.out.println(result);
 		// System.out.println("Duration: " + seconds);
 
-		// executeInsertEmbeddedWithExistingUser(embedded);
+//		 executeInsertEmbeddedWithExistingUser(embedded);
 
 		// Tag Top Blogger
 		// long startTime = System.nanoTime();
@@ -201,6 +204,7 @@ public class Test {
 	}
 
 	public static void executeInsertEmbeddedWithExistingUser(DB db) {
+		
 		try {
 
 			// Helper Variable
@@ -211,6 +215,9 @@ public class Test {
 			DBCollection userCollection = db.getCollection("User");
 
 			// Insert User
+			List<String> items = new ArrayList<String>();
+			items.add("laser");
+			items.add("sword");			
 			for (count = 0; count < numberOfUsers; count++) {
 				Map<String, Object> user = new HashMap<String, Object>();
 				user.put("id", count + 1);
@@ -218,57 +225,58 @@ public class Test {
 				user.put("nachname", randomText(150));
 				user.put("email", randomText(120) + "@" + randomText(20) + "."
 						+ randomText(10));
+				user.put("item", items);
 				userCollection.insert(new BasicDBObject(user));
 			}
 
-			// Insert Comment
-			int b;
-			int c;
-			int l;
-			for (b = 1; b <= numberOfBlogs; b++) {
-
-				Map<String, String> user = new HashMap<String, String>();
-				user = selectUserById(db, randomNumber(1, numberOfUsers));
-
-				BasicDBObject blog = new BasicDBObject();
-				blog.put("id", b);
-				blog.put("blogpost", randomText(5000));
-				blog.put("user_id", user.get("id"));
-				blog.put("vorname", user.get("vorname"));
-				blog.put("nachname", user.get("nachname"));
-				blog.put("email", user.get("email"));
-
-				for (c = 1; c <= 3; c++) {
-
-					BasicDBObject comment = new BasicDBObject();
-					user = selectUserById(db, randomNumber(1, numberOfUsers));
-					comment.put("id", c);
-					comment.put("comment", randomText(2000));
-					comment.put("user_id", user.get("id"));
-					comment.put("vorname", user.get("vorname"));
-					comment.put("nachname", user.get("nachname"));
-					comment.put("email", user.get("email"));
-
-					ArrayList<BasicDBObject> myList = new ArrayList<BasicDBObject>();
-					for (l = 1; l <= 3; l++) {
-
-						BasicDBObject like = new BasicDBObject();
-						user = selectUserById(db,
-								randomNumber(1, numberOfUsers));
-						like.put("user_id", user.get("id"));
-						like.put("vorname", user.get("vorname"));
-						like.put("nachname", user.get("nachname"));
-						like.put("email", user.get("email"));
-						myList.add(like);
-					}
-					comment.put("Likes", myList);
-
-					BasicDBObject update = new BasicDBObject();
-					update.put("$push", new BasicDBObject("Comment", comment));
-					blogCollection.update(blog, update, true, true);
-				}
-
-			}
+//			// Insert Comment
+//			int b;
+//			int c;
+//			int l;
+//			for (b = 1; b <= numberOfBlogs; b++) {
+//
+//				Map<String, String> user = new HashMap<String, String>();
+//				user = selectUserById(db, randomNumber(1, numberOfUsers));
+//
+//				BasicDBObject blog = new BasicDBObject();
+//				blog.put("id", b);
+//				blog.put("blogpost", randomText(5000));
+//				blog.put("user_id", user.get("id"));
+//				blog.put("vorname", user.get("vorname"));
+//				blog.put("nachname", user.get("nachname"));
+//				blog.put("email", user.get("email"));
+//
+//				for (c = 1; c <= 3; c++) {
+//
+//					BasicDBObject comment = new BasicDBObject();
+//					user = selectUserById(db, randomNumber(1, numberOfUsers));
+//					comment.put("id", c);
+//					comment.put("comment", randomText(2000));
+//					comment.put("user_id", user.get("id"));
+//					comment.put("vorname", user.get("vorname"));
+//					comment.put("nachname", user.get("nachname"));
+//					comment.put("email", user.get("email"));
+//
+//					ArrayList<BasicDBObject> myList = new ArrayList<BasicDBObject>();
+//					for (l = 1; l <= 3; l++) {
+//
+//						BasicDBObject like = new BasicDBObject();
+//						user = selectUserById(db,
+//								randomNumber(1, numberOfUsers));
+//						like.put("user_id", user.get("id"));
+//						like.put("vorname", user.get("vorname"));
+//						like.put("nachname", user.get("nachname"));
+//						like.put("email", user.get("email"));
+//						myList.add(like);
+//					}
+//					comment.put("Likes", myList);
+//
+//					BasicDBObject update = new BasicDBObject();
+//					update.put("$push", new BasicDBObject("Comment", comment));
+//					blogCollection.update(blog, update, true, true);
+//				}
+//
+//			}
 
 		} catch (Exception e) {
 			System.err.println(e.getClass().getName() + ": " + e.getMessage());
@@ -828,4 +836,95 @@ public class Test {
 
 	}
 
+	public static HashMap<String, String> moveItemBetweenUserEmbedded(DB db) {
+
+		// Helper
+		HashMap<String, String> result = new HashMap<String, String>();
+		Integer id = null;
+		Integer from = null;
+		Integer to = null;
+		String item = null;
+		String _id = null;
+
+		// Get Collection
+		DBCollection userCollection = db.getCollection("User");
+		DBCollection transactionCollection = db.getCollection("Transaction");
+
+		// Create Transaction Object and set state to INIT
+		Map<String, Object> transaction = new HashMap<String, Object>();
+		transaction.put("id", 1);
+		transaction.put("from", 1);
+		transaction.put("to", 2);
+		transaction.put("item", "sword");
+		transaction.put("state", "init");
+		transactionCollection.insert(new BasicDBObject(transaction));
+
+		BasicDBObject transactionQuery = new BasicDBObject("id", 1);
+		DBCursor transactionCursor = transactionCollection.find(transactionQuery);
+		try {
+			while (transactionCursor.hasNext()) {
+				BasicDBObject transactionObject = (BasicDBObject) transactionCursor.next();
+
+				// Parse Result Set
+				id = transactionObject.getInt("id");
+				from = transactionObject.getInt("from");
+				to = transactionObject.getInt("to");
+				item = transactionObject.getString("item");
+				
+			}
+		} finally {
+			transactionCursor.close();
+		}
+		
+		// Set State to PENDING
+		transactionQuery = new BasicDBObject("id", 1);
+		DBObject transactionUpdate = new BasicDBObject();
+		transactionUpdate.put("$set", new BasicDBObject("state","pending"));
+		transactionCollection.update(transactionQuery, transactionUpdate);
+
+		// Update First Document and Set Transaction to 1		
+		BasicDBObject userQuery = new BasicDBObject("id", from);
+		DBObject userUpdate = new BasicDBObject();
+		userUpdate.put("$pull", new BasicDBObject("item",item));
+		userUpdate.put("$set", new BasicDBObject("transaction",1));
+		userCollection.update(userQuery, userUpdate);
+		
+		// Update Second Document and Set Transaction to 1		
+		userQuery = new BasicDBObject("id", to);
+		userUpdate = new BasicDBObject();
+		userUpdate.put("$push", new BasicDBObject("item",item));
+		userUpdate.put("$set", new BasicDBObject("transaction",1));
+		userCollection.update(userQuery, userUpdate);
+		
+		// Set State to COMMITTED
+		transactionQuery = new BasicDBObject("id", 1);
+		transactionUpdate = new BasicDBObject();
+		transactionUpdate.put("$set", new BasicDBObject("state","committed"));
+		transactionCollection.update(transactionQuery, transactionUpdate);		
+		
+		// Update First Document and Set Transaction to 0		
+		userQuery = new BasicDBObject("id", from);
+		userUpdate = new BasicDBObject();
+		userUpdate.put("$set", new BasicDBObject("transaction",0));
+		userCollection.update(userQuery, userUpdate);
+		
+		// Update Second Document and Set Transaction to 0
+		userQuery = new BasicDBObject("id", to);
+		userUpdate = new BasicDBObject();
+		userUpdate.put("$set", new BasicDBObject("transaction",0));
+		userCollection.update(userQuery, userUpdate);
+		
+		// Retrieve Transaction Object and set State to DONE
+		transactionQuery = new BasicDBObject("id", 1);
+		transactionUpdate = new BasicDBObject();
+		transactionUpdate.put("$set", new BasicDBObject("state","done"));
+		transactionCollection.update(transactionQuery, transactionUpdate);	
+		
+		// Delete Transaction Object
+		transactionQuery = new BasicDBObject("id", 1);
+		transactionCollection.remove(transactionQuery);				
+		
+		return result;
+
+	}
 }
