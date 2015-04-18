@@ -23,17 +23,17 @@ import com.mongodb.WriteResult;
 
 public class Test {
 
-	public static int numberOfUsers = 1000;
-	public static int numberOfBlogs = 1000;
-	public static int numberOfComments = 1000;
-	public static int numberOfLikes = 1000;
+	public static int numberOfUsers = 90000;
+	public static int numberOfBlogs = 90000;
+	public static int numberOfComments = 90000;
+	public static int numberOfLikes = 90000;
 
 	public static void main(String args[]) {
 
 		// Connection Details
 		MongoClient mongoClient = connectToDB("192.168.122.194");
-		DB embedded = mongoClient.getDB("embedded");
-		DB referenced = mongoClient.getDB("referenced");
+		DB embedded = mongoClient.getDB("referenced");
+		// DB referenced = mongoClient.getDB("referenced");
 
 		// executeInsertReferenced(referenced);
 
@@ -57,15 +57,15 @@ public class Test {
 		// // Get one merged Document from Referenced Documents
 		// long startTime = System.nanoTime();
 		// ArrayList<HashMap<String, String>> result =
-		// selectBlogWithAssociatesReferencedSingle(referenced, 21);
+		// selectBlogWithAssociatesReferencedSingle(referenced, 25);
 		// long estimatedTime = System.nanoTime() - startTime;
 		// double seconds = (double) estimatedTime / 1000000000.0;
 		// System.out.println(result);
 		// System.out.println("Duration: " + seconds);
 
-		// executeInsertEmbeddedWithExistingUser(embedded);
+		// executeInsertEmbeddedWithNewUser(embedded);
 
-		// Tag Top Blogger
+		// // Tag Top Blogger
 		// long startTime = System.nanoTime();
 		// HashMap<String, String> result = tagTopBloggerEmbedded(embedded);
 		// long estimatedTime = System.nanoTime() - startTime;
@@ -86,7 +86,6 @@ public class Test {
 		// long startTime = System.nanoTime();
 		// ArrayList<HashMap<String, String>> result =
 		// selectBlogWithAssociatesEmbeddedSingle(embedded, 222);
-		// long endTime = System.nanoTime();
 		// long estimatedTime = System.nanoTime() - startTime;
 		// double seconds = (double) estimatedTime / 1000000000.0;
 		// System.out.println(result);
@@ -94,11 +93,19 @@ public class Test {
 
 		// executeInsertUserWithItem(embedded);
 
-		// // Transaction
+		// // Move Item with Transaction
+		// long startTime = System.nanoTime();
+		// HashMap<String, String> result =
+		// moveItemBetweenUserEmbeddedTransaction(embedded);
+		// long estimatedTime = System.nanoTime() - startTime;
+		// double seconds = (double) estimatedTime / 1000000000.0;
+		// System.out.println(result);
+		// System.out.println("Duration: " + seconds);
+
+		// // Move Item without Transaction
 		// long startTime = System.nanoTime();
 		// HashMap<String, String> result =
 		// moveItemBetweenUserEmbedded(embedded);
-		// long endTime = System.nanoTime();
 		// long estimatedTime = System.nanoTime() - startTime;
 		// double seconds = (double) estimatedTime / 1000000000.0;
 		// System.out.println(result);
@@ -149,16 +156,16 @@ public class Test {
 			DBCollection blogCollection = db.getCollection("Blog");
 			DBCollection userCollection = db.getCollection("User");
 
-			// Insert User
-			for (count = 0; count < numberOfUsers; count++) {
-				Map<String, Object> user = new HashMap<String, Object>();
-				user.put("id", count + 1);
-				user.put("vorname", randomText(100));
-				user.put("nachname", randomText(150));
-				user.put("email", randomText(120) + "@" + randomText(20) + "."
-						+ randomText(10));
-				userCollection.insert(new BasicDBObject(user));
-			}
+			// // Insert User
+			// for (count = 0; count < numberOfUsers; count++) {
+			// Map<String, Object> user = new HashMap<String, Object>();
+			// user.put("id", count + 1);
+			// user.put("vorname", randomText(100));
+			// user.put("nachname", randomText(150));
+			// user.put("email", randomText(120) + "@" + randomText(20) + "."
+			// + randomText(10));
+			// userCollection.insert(new BasicDBObject(user));
+			// }
 
 			// Insert Comment
 			int b;
@@ -224,16 +231,16 @@ public class Test {
 			DBCollection blogCollection = db.getCollection("Blog");
 			DBCollection userCollection = db.getCollection("User");
 
-			// Insert User
-			for (count = 0; count < numberOfUsers; count++) {
-				Map<String, Object> user = new HashMap<String, Object>();
-				user.put("id", count + 1);
-				user.put("vorname", randomText(100));
-				user.put("nachname", randomText(150));
-				user.put("email", randomText(120) + "@" + randomText(20) + "."
-						+ randomText(10));
-				userCollection.insert(new BasicDBObject(user));
-			}
+			// // Insert User
+			// for (count = 0; count < numberOfUsers; count++) {
+			// Map<String, Object> user = new HashMap<String, Object>();
+			// user.put("id", count + 1);
+			// user.put("vorname", randomText(100));
+			// user.put("nachname", randomText(150));
+			// user.put("email", randomText(120) + "@" + randomText(20) + "."
+			// + randomText(10));
+			// userCollection.insert(new BasicDBObject(user));
+			// }
 
 			// Insert Comment
 			int b;
@@ -794,32 +801,35 @@ public class Test {
 		// Loop through Result From Aggregation
 		for (DBObject dbobject : output.results()) {
 			result.put("id", dbobject.get("_id").toString());
+
 			// Update User in Blog Dokument
 			blogCollection.updateMulti(
 					new BasicDBObject("user_id", dbobject.get("_id")),
 					new BasicDBObject("$set",
 							new BasicDBObject("topBlogger", 1)));
+
 			// Update User in Subdokument Comment
 			blogCollection.updateMulti(new BasicDBObject("Comment.user_id",
 					dbobject.get("_id")), new BasicDBObject("$set",
 					new BasicDBObject("Comment.$.topBlogger", 1)));
+
 			// Update User in Subdokument Likes
 			DBCursor userCursor = blogCollection.find(new BasicDBObject(
 					"Comment.Likes.user_id", dbobject.get("_id")));
-			// try {
-			// while (userCursor.hasNext()) {
-			// BasicDBObject user = (BasicDBObject) userCursor.next();
-			// // TODO: APPLICATION CODE TO GET BLOG AND COMMENT ID
-			// Integer id = 822;
-			// Integer comment_id = 2;
-			// blogCollection.updateMulti(new BasicDBObject(
-			// "Comment.Likes.user_id", dbobject.get("_id")),
-			// new BasicDBObject("$set", new BasicDBObject(
-			// "Comment.0.Likes.$.ABCDETEST", 1)));
-			// }
-			// } finally {
-			// userCursor.close();
-			// }
+			try {
+				while (userCursor.hasNext()) {
+					BasicDBObject user = (BasicDBObject) userCursor.next();
+
+					// TODO: APPLICATION CODE TO GET BLOG AND COMMENT ID
+
+					blogCollection.updateMulti(new BasicDBObject(
+							"Comment.Likes.user_id", dbobject.get("_id")),
+							new BasicDBObject("$set", new BasicDBObject(
+									"Comment.0.Likes.$.topBlogger", 1)));
+				}
+			} finally {
+				userCursor.close();
+			}
 
 		}
 
@@ -872,7 +882,8 @@ public class Test {
 
 	}
 
-	public static HashMap<String, String> moveItemBetweenUserEmbedded(DB db) {
+	public static HashMap<String, String> moveItemBetweenUserEmbeddedTransaction(
+			DB db) {
 
 		// Helper
 		HashMap<String, String> result = new HashMap<String, String>();
@@ -964,4 +975,33 @@ public class Test {
 		return result;
 
 	}
+
+	public static HashMap<String, String> moveItemBetweenUserEmbedded(DB db) {
+
+		// Helper
+		HashMap<String, String> result = new HashMap<String, String>();
+		Integer from = 1;
+		Integer to = 2;
+		String item = "laser";
+
+		// Get Collection
+		DBCollection userCollection = db.getCollection("User");
+		DBCollection transactionCollection = db.getCollection("Transaction");
+
+		// Update First Document
+		BasicDBObject userQuery = new BasicDBObject("id", from);
+		DBObject userUpdate = new BasicDBObject();
+		userUpdate.put("$pull", new BasicDBObject("item", item));
+		userCollection.update(userQuery, userUpdate);
+
+		// Update Second Document
+		userQuery = new BasicDBObject("id", to);
+		userUpdate = new BasicDBObject();
+		userUpdate.put("$push", new BasicDBObject("item", item));
+		userCollection.update(userQuery, userUpdate);
+
+		return result;
+
+	}
+
 }
